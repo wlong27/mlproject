@@ -7,8 +7,10 @@ from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import warnings
+import time
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=UserWarning)
+from sklearn.tree import export_graphviz
 
 print('Start ...')
 
@@ -41,36 +43,63 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30)
 
 
 #Performance Evaluation w/o PCA
-classifier = RandomForestClassifier(max_depth=2, random_state=0)
+start_time = time.time()
+classifier = RandomForestClassifier(max_depth=5, random_state=0)
 classifier.fit(X_train, y_train)
 y_pred = classifier.predict(X_test)
+elapsed_time = time.time() - start_time
+print(classification_report(y_test,y_pred))
 print('Accuracy:' + str(accuracy_score(y_test, y_pred)))
+print('Elapsed time: ' + str(elapsed_time))
+
+
+# Extract single tree
+estimator = classifier.estimators_[5]
+CICID_DATA.feature_names = list(CICID_DATA)[:len(list(CICID_DATA))-1]
+
+# Export as dot file
+export_graphviz(estimator, out_file='tree_rf.dot', 
+                feature_names = CICID_DATA.feature_names,
+                rounded = True, proportion = False, filled = True, precision=10)
+
+ 
 
 #PCA - Explore number of principal components to set using Explained Variance
-pca = PCA()
-X_train = pca.fit_transform(X_train)
-X_test = pca.transform(X_test)
-print(pca.explained_variance_ratio_)
+# pca = PCA()
+# X_train = pca.fit_transform(X_train)
+# X_test = pca.transform(X_test)
+#print(pca.explained_variance_ratio_)
 
 #Plotting the Cumulative Summation of the Explained Variance
-plt.figure()
-plt.plot(np.cumsum(pca.explained_variance_ratio_))
-plt.xlabel('Number of Components')
-plt.ylabel('Variance') #for each component
-plt.title('Explained Variance')
-plt.show()
+# plt.figure()
+# plt.plot(np.cumsum(pca.explained_variance_ratio_))
+# plt.xlabel('Number of Components')
+# plt.ylabel('Variance') #for each component
+# plt.title('Explained Variance')
+#plt.show()
 
 #Performance Evaluation against number of principal components
-for i in range(1,15):
-    pca = PCA(n_components=i)
-    X_train_temp = pca.fit_transform(X_train)
-    X_test_temp = pca.transform(X_test)
+# for i in range(1,15):
+pca = PCA(n_components=15)
+X_train_temp = pca.fit_transform(X_train)
+X_test_temp = pca.transform(X_test)
 
-    classifier = RandomForestClassifier(max_depth=2, random_state=0)
-    classifier.fit(X_train_temp, y_train)
-    y_pred = classifier.predict(X_test_temp)
+start_time = time.time()
+classifier = RandomForestClassifier(max_depth=5, random_state=0) #default n_estimators=10 == 10 decision tree
+classifier.fit(X_train_temp, y_train)
+y_pred = classifier.predict(X_test_temp)
+elapsed_time = time.time() - start_time
+print(classification_report(y_test,y_pred))
+print('Accuracy:' + str(accuracy_score(y_test, y_pred)))
+print('Elapsed time: ' + str(elapsed_time))
 
-    # print(confusion_matrix(y_test,y_pred))
-    # print(classification_report(y_test,y_pred))
-    print( str(i) + ' Accuracy:' + str(accuracy_score(y_test, y_pred)))
+# Extract single tree
+estimator = classifier.estimators_[5]
+CICID_DATA.feature_names = list(CICID_DATA)[:len(list(CICID_DATA))-1]
+
+# Export as dot file
+export_graphviz(estimator, out_file='tree_rf_pca.dot', 
+                #feature_names = CICID_DATA.feature_names,
+                rounded = True, proportion = False, filled = True, precision=10)
+
 print('End of run')
